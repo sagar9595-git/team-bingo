@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Bingo — Boarding Pass Edition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!--
+  ============================================================
+  SETUP — read this before hosting
+  ============================================================
+  This page works stand-alone (solo mode, saved on one device),
+  or fully shared/live across everyone's devices if you connect
+  a free Firebase Realtime Database. See SETUP-GUIDE.md for the
+  5-minute walkthrough. Once you have your config, paste it into
+  FIREBASE_CONFIG below (search for "PASTE YOUR CONFIG HERE").
+  ============================================================
+-->
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<style>
+  :root{
+    --ink:#141B2E;
+    --ink-2:#1C2740;
+    --parchment:#E7DEC5;
+    --parchment-2:#F1EAD6;
+    --brass:#B9902C;
+    --brass-light:#D9B65C;
+    --crimson:#AE3A2C;
+    --teal:#2C5C58;
+    --text-dark:#241D12;
+    --text-mute:#6B6252;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  html,body{
+    min-height:100%;
+    background:var(--ink);
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(217,182,92,0.06), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(44,92,88,0.10), transparent 45%);
+    font-family:'IBM Plex Sans', sans-serif;
+    color:var(--parchment-2);
+    overflow-x:hidden;
+  }
+
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    pointer-events:none;
+    opacity:0.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    z-index:1;
+  }
+
+  .wrap{
+    position:relative;
+    z-index:2;
+    max-width:680px;
+    margin:0 auto;
+    padding:32px 18px 80px;
+  }
+
+  .sync-banner{
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.04em;
+    text-align:center;
+    padding:8px 12px;
+    border-radius:8px;
+    margin-bottom:14px;
+  }
+  .sync-banner.offline{
+    background:rgba(174,58,44,0.15);
+    border:1px solid rgba(174,58,44,0.4);
+    color:#E9A99C;
+  }
+  .sync-banner.online{
+    background:rgba(44,92,88,0.18);
+    border:1px solid rgba(44,92,88,0.5);
+    color:#8FD4CC;
+  }
+
+  .pass{
+    background:linear-gradient(135deg, var(--ink-2), var(--ink));
+    border:1px solid rgba(217,182,92,0.35);
+    border-radius:14px;
+    padding:22px 24px;
+    position:relative;
+    box-shadow:0 20px 45px -20px rgba(0,0,0,0.6);
+  }
+
+  .pass::after{
+    content:"";
+    position:absolute;
+    left:0; right:0; bottom:-10px;
+    height:20px;
+    background-image:radial-gradient(circle, var(--ink) 6px, transparent 7px);
+    background-size:20px 20px;
+    background-position:center;
+    background-repeat:repeat-x;
+  }
+
+  .eyebrow{
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.18em;
+    color:var(--brass-light);
+    text-transform:uppercase;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:clamp(26px,6vw,36px);
+    line-height:1.05;
+    margin:10px 0 4px;
+    color:var(--parchment-2);
+    letter-spacing:-0.01em;
+  }
+
+  .subtitle{
+    font-size:14px;
+    color:rgba(241,234,214,0.65);
+    margin-bottom:18px;
+  }
+
+  .pass-grid{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:14px;
+    align-items:end;
+    border-top:1px dashed rgba(217,182,92,0.3);
+    padding-top:14px;
+  }
+
+  .field label{
+    display:block;
+    font-family:'Space Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:rgba(241,234,214,0.5);
+    margin-bottom:6px;
+  }
+
+  .field input{
+    width:100%;
+    background:transparent;
+    border:none;
+    border-bottom:1px solid rgba(217,182,92,0.4);
+    font-family:'Space Mono', monospace;
+    font-size:15px;
+    color:var(--parchment-2);
+    padding:4px 2px;
+    letter-spacing:0.04em;
+  }
+  .field input:focus{outline:none; border-bottom-color:var(--brass-light);}
+  .field input::placeholder{color:rgba(241,234,214,0.3);}
+
+  .pass-code{
+    font-family:'Space Mono', monospace;
+    font-size:12px;
+    color:var(--brass-light);
+    text-align:right;
+    white-space:nowrap;
+  }
+
+  .tabs{
+    display:flex;
+    gap:8px;
+    margin-top:18px;
+  }
+  .tab-btn{
+    flex:1;
+    font-family:'Space Mono', monospace;
+    font-size:11.5px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    background:rgba(255,255,255,0.03);
+    border:1px solid rgba(217,182,92,0.25);
+    color:rgba(241,234,214,0.6);
+    padding:10px 12px;
+    border-radius:9px;
+    cursor:pointer;
+    transition:all 0.15s ease;
+  }
+  .tab-btn.active{
+    background:rgba(217,182,92,0.15);
+    border-color:var(--brass-light);
+    color:var(--brass-light);
+  }
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .card{
+    background:var(--parchment);
+    border-radius:16px;
+    margin-top:14px;
+    padding:22px 18px 24px;
+    position:relative;
+    border:2px solid var(--brass);
+    box-shadow:0 30px 60px -30px rgba(0,0,0,0.7), inset 0 0 0 6px rgba(255,253,244,0.35);
+  }
+
+  .card-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:14px;
+    padding:0 4px;
+  }
+
+  .card-title{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:15px;
+    color:var(--text-dark);
+    letter-spacing:0.02em;
+  }
+
+  .lines-count{
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    color:var(--teal);
+    background:rgba(44,92,88,0.1);
+    border:1px solid rgba(44,92,88,0.3);
+    padding:4px 9px;
+    border-radius:20px;
+    letter-spacing:0.05em;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(5, 1fr);
+    gap:7px;
+  }
+
+  .sq{
+    position:relative;
+    aspect-ratio:1/1;
+    background:var(--parchment-2);
+    border:1px solid rgba(107,98,82,0.25);
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:6px;
+    cursor:pointer;
+    user-select:none;
+    transition:transform 0.12s ease, box-shadow 0.12s ease;
+    overflow:hidden;
+  }
+  .sq:hover{transform:translateY(-2px); box-shadow:0 8px 16px -8px rgba(0,0,0,0.3);}
+  .sq:active{transform:translateY(0px) scale(0.98);}
+
+  .sq span{
+    font-size:11px;
+    line-height:1.25;
+    color:var(--text-dark);
+    font-weight:500;
+    position:relative;
+    z-index:2;
+  }
+
+  .sq.free{
+    background:linear-gradient(135deg, rgba(44,92,88,0.12), rgba(217,182,92,0.15));
+  }
+  .sq.free span{font-family:'Fraunces', serif; font-weight:600; font-size:12px;}
+
+  .stamp{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    pointer-events:none;
+    opacity:0;
+    transform:scale(1.6) rotate(-14deg);
+    transition:opacity 0.15s ease, transform 0.25s cubic-bezier(.2,1.4,.4,1);
+    z-index:3;
+  }
+
+  .sq.stamped .stamp{
+    opacity:0.92;
+    transform:scale(1) rotate(-10deg);
+  }
+
+  .sq.stamped span{opacity:0.35;}
+
+  .stamp-ring{
+    width:82%;
+    height:82%;
+    border:2.5px solid var(--crimson);
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    mix-blend-mode:multiply;
+    position:relative;
+  }
+  .stamp-ring::before{
+    content:"";
+    position:absolute;
+    inset:5px;
+    border:1px solid var(--crimson);
+    border-radius:50%;
+    opacity:0.6;
+  }
+  .stamp-ring b{
+    font-family:'Space Mono', monospace;
+    font-size:9px;
+    letter-spacing:0.06em;
+    color:var(--crimson);
+    text-transform:uppercase;
+  }
+
+  .controls{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:18px;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .btn{
+    font-family:'Space Mono', monospace;
+    font-size:11.5px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    background:transparent;
+    border:1px solid rgba(217,182,92,0.5);
+    color:var(--brass-light);
+    padding:9px 16px;
+    border-radius:30px;
+    cursor:pointer;
+    transition:background 0.15s ease, color 0.15s ease;
+  }
+  .btn:hover{background:rgba(217,182,92,0.12);}
+
+  .status{
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    color:rgba(241,234,214,0.55);
+  }
+
+  .win-banner{
+    margin-top:16px;
+    text-align:center;
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:18px;
+    color:var(--brass-light);
+    opacity:0;
+    transform:translateY(6px);
+    transition:opacity 0.3s ease, transform 0.3s ease;
+  }
+  .win-banner.show{opacity:1; transform:translateY(0);}
+
+  .board-card{
+    background:var(--ink-2);
+    border:1px solid rgba(217,182,92,0.25);
+    border-radius:16px;
+    margin-top:14px;
+    padding:18px;
+  }
+  .board-row{
+    display:grid;
+    grid-template-columns:auto 1fr auto auto;
+    align-items:center;
+    gap:12px;
+    padding:12px 8px;
+    border-bottom:1px solid rgba(255,255,255,0.06);
+  }
+  .board-row:last-child{border-bottom:none;}
+  .board-rank{
+    font-family:'Space Mono', monospace;
+    font-size:12px;
+    color:var(--brass-light);
+    width:20px;
+  }
+  .board-name{
+    font-weight:600;
+    font-size:14px;
+    color:var(--parchment-2);
+  }
+  .board-updated{
+    font-family:'Space Mono', monospace;
+    font-size:10px;
+    color:rgba(241,234,214,0.4);
+    display:block;
+    margin-top:2px;
+  }
+  .board-progress{
+    width:70px;
+    height:6px;
+    border-radius:4px;
+    background:rgba(255,255,255,0.08);
+    overflow:hidden;
+  }
+  .board-progress-fill{
+    height:100%;
+    background:linear-gradient(90deg, var(--teal), var(--brass-light));
+  }
+  .board-lines{
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    color:var(--teal);
+    background:rgba(44,92,88,0.18);
+    border:1px solid rgba(44,92,88,0.4);
+    padding:3px 8px;
+    border-radius:20px;
+    white-space:nowrap;
+  }
+  .board-lines.win{
+    color:var(--crimson);
+    background:rgba(174,58,44,0.15);
+    border-color:rgba(174,58,44,0.4);
+  }
+  .board-empty{
+    text-align:center;
+    padding:30px 10px;
+    color:rgba(241,234,214,0.4);
+    font-size:13px;
+  }
+
+  .howto{
+    margin-top:22px;
+    padding:16px 18px;
+    border:1px dashed rgba(217,182,92,0.3);
+    border-radius:12px;
+    font-size:13px;
+    line-height:1.6;
+    color:rgba(241,234,214,0.75);
+  }
+  .howto b{color:var(--brass-light);}
+
+  .confetti-piece{
+    position:fixed;
+    top:-20px;
+    width:8px; height:14px;
+    opacity:0.9;
+    z-index:50;
+    pointer-events:none;
+    animation:fall linear forwards;
+  }
+  @keyframes fall{
+    to{ transform:translateY(110vh) rotate(540deg); opacity:0.2; }
+  }
+
+  .modal-overlay{
+    position:fixed; inset:0;
+    background:rgba(10,14,24,0.82);
+    display:flex; align-items:center; justify-content:center;
+    z-index:100;
+    padding:20px;
+  }
+  .modal{
+    background:var(--parchment);
+    border:2px solid var(--brass);
+    border-radius:14px;
+    padding:26px 24px;
+    max-width:360px;
+    width:100%;
+    text-align:center;
+  }
+  .modal h2{
+    font-family:'Fraunces', serif;
+    font-size:20px;
+    color:var(--text-dark);
+    margin-bottom:8px;
+  }
+  .modal p{
+    font-size:13px;
+    color:var(--text-mute);
+    margin-bottom:16px;
+    line-height:1.5;
+  }
+  .modal input{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid rgba(107,98,82,0.35);
+    border-radius:8px;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14px;
+    margin-bottom:14px;
+  }
+  .modal .btn{
+    width:100%;
+    background:var(--teal);
+    color:#fff;
+    border:none;
+    padding:11px;
+  }
+  .modal .btn:hover{background:#254c48;}
+
+  @media (max-width:420px){
+    .sq span{font-size:9.5px;}
+    .pass-grid{grid-template-columns:1fr;}
+    .pass-code{text-align:left;}
+  }
+</style>
+</head>
+<body>
+
+<div id="nameModal" class="modal-overlay">
+  <div class="modal">
+    <h2>Welcome aboard ✈️</h2>
+    <p>Enter your name so your teammates can see your progress on the live board.</p>
+    <input id="modalNameInput" type="text" placeholder="Your name" maxlength="30">
+    <button class="btn" id="modalJoinBtn">Get my card</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div id="syncBanner" class="sync-banner offline">Solo mode — live sync not configured yet</div>
+
+  <div class="pass">
+    <div class="eyebrow">
+      <span>Boarding Pass · Team Bingo</span>
+      <span id="passDate"></span>
+    </div>
+    <h1>Fabric Squad Bingo</h1>
+    <div class="subtitle">Find something true for each square. Fill a full line to call bingo.</div>
+    <div class="pass-grid">
+      <div class="field">
+        <label>Passenger name</label>
+        <input id="nameInput" type="text" placeholder="Type your name">
+      </div>
+      <div class="pass-code" id="passCode">NO. ——</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="card">My Card</button>
+    <button class="tab-btn" data-tab="board">Live Board</button>
+  </div>
+
+  <div id="cardView" class="view active">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">✦ Your Card ✦</div>
+        <div class="lines-count" id="linesCount">0 lines</div>
+      </div>
+      <div class="grid" id="grid"></div>
+      <div class="win-banner" id="winBanner">🎉 Bingo! Shout it out loud.</div>
+      <div class="controls">
+        <button class="btn" id="newCardBtn">↺ New card</button>
+        <div class="status" id="statusText">Tap a square once you've found your match</div>
+      </div>
+    </div>
+    <div class="howto">
+      <b>How to play —</b> Mingle to find a teammate who matches each square, then tap it to stamp it. First to complete a row, column, or diagonal calls "Bingo!" out loud. Switch to <b>Live Board</b> to see how everyone else is doing.
+    </div>
+  </div>
+
+  <div id="boardView" class="view">
+    <div class="board-card">
+      <div class="card-header" style="margin-bottom:8px;">
+        <div class="card-title" style="color:var(--parchment-2);">✦ Live Board ✦</div>
+        <button class="btn" id="copyLinkBtn" style="padding:6px 12px; font-size:10px;">Copy link</button>
+      </div>
+      <div id="boardList"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+
+  /* ============================================================
+     PASTE YOUR CONFIG HERE
+     Get this from Firebase Console → Project settings → General
+     → Your apps → SDK setup and configuration. See SETUP-GUIDE.md.
+     Leave as-is to run in solo (no live sync) mode.
+     ============================================================ */
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyA1HS9ItXNvWAxITBeD6xWjjw9Z99QV_kY",
+    authDomain: "team-bingo-fire.firebaseapp.com",
+    databaseURL: "https://team-bingo-fire-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "team-bingo-fire"
+  };
+
+  // Give every event/session its own room so cards don't clash.
+  // Override per-link with ?room=your-room-name in the URL.
+  const params = new URLSearchParams(window.location.search);
+  const ROOM_ID = params.get('room') || 'fabric-squad';
+  /* ============================================================ */
+
+  const ITEMS = [
+    "Has lived in 3+ countries",
+    "Speaks 3+ languages",
+    "Can't function without their first coffee or tea",
+    "Has a pet (bonus if it's two)",
+    "Has run a marathon, or never ever would",
+    "Plays a musical instrument",
+    "Has met someone famous",
+    "Loves Mondays about as much as everyone else hates them",
+    "Prefers mountains over the beach",
+    "Has a hidden talent nobody at work knows about",
+    "Has binged a full show in one weekend",
+    "Cooks a signature dish from home",
+    "Has visited 10+ countries",
+    "Is a football fan (either playing or watching)",
+    "Would rather read a book than watch TV",
+    "Has worked on Microsoft Fabric for 5+ years",
+    "Has a garden or grows plants at home",
+    "Once had a job with nothing to do with tech",
+    "Is up before 6am without an alarm",
+    "Has a comfort food that's mostly carbs",
+    "Has done something wild like a bungee jump or skydive",
+    "Collects something unusual",
+    "Prefers karaoke over quiz night",
+    "Has a nickname only close friends use",
+    "Has moved house 5+ times",
+    "Can cook a dish from a country they've never lived in",
+    "Has a very strong opinion about tea vs coffee",
+    "Has been on a work call from an unusual location",
+    "Owns something they've had since childhood",
+    "Has learned a skill just for fun, not for work"
+  ];
+
+  const LINES = [
+    [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
+    [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],
+    [0,6,12,18,24],[4,8,12,16,20]
+  ];
+
+  const grid = document.getElementById('grid');
+  const linesCountEl = document.getElementById('linesCount');
+  const winBanner = document.getElementById('winBanner');
+  const statusText = document.getElementById('statusText');
+  const nameInput = document.getElementById('nameInput');
+  const passCode = document.getElementById('passCode');
+  const passDate = document.getElementById('passDate');
+  const syncBanner = document.getElementById('syncBanner');
+  const boardList = document.getElementById('boardList');
+  const nameModal = document.getElementById('nameModal');
+  const modalNameInput = document.getElementById('modalNameInput');
+  const modalJoinBtn = document.getElementById('modalJoinBtn');
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+  function makeCode(){ return Math.floor(100000 + Math.random()*899999).toString(); }
+  function uuid(){ return 'p-' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+
+  let playerId = localStorage.getItem('bingoPlayerId');
+  if(!playerId){ playerId = uuid(); localStorage.setItem('bingoPlayerId', playerId); }
+
+  let playerName = localStorage.getItem('bingoName') || '';
+
+  let cardText = JSON.parse(localStorage.getItem('bingoCard') || 'null');
+  let stamped = JSON.parse(localStorage.getItem('bingoStamped') || 'null');
+  let code = localStorage.getItem('bingoCode');
+
+  if(!cardText){
+    const picked = shuffle(ITEMS).slice(0,24);
+    picked.splice(12, 0, "FREE — Already know each other");
+    cardText = picked;
+    stamped = picked.map((_,i)=> i===12);
+    code = makeCode();
+    localStorage.setItem('bingoCard', JSON.stringify(cardText));
+    localStorage.setItem('bingoStamped', JSON.stringify(stamped));
+    localStorage.setItem('bingoCode', code);
+  }
+
+  passCode.textContent = 'NO. ' + code;
+  passDate.textContent = new Date().toLocaleDateString(undefined, {day:'2-digit', month:'short', year:'numeric'});
+  nameInput.value = playerName;
+
+  let dbRef = null;
+  let firebaseReady = false;
+
+  function initFirebase(){
+    if(FIREBASE_CONFIG.apiKey === "YOUR_API_KEY") return;
+    try{
+      firebase.initializeApp(FIREBASE_CONFIG);
+      const db = firebase.database();
+      dbRef = db.ref('rooms/' + ROOM_ID + '/players/' + playerId);
+      firebaseReady = true;
+      syncBanner.textContent = '🟢 Live sync connected — room "' + ROOM_ID + '"';
+      syncBanner.className = 'sync-banner online';
+      pushState();
+      listenBoard(db);
+    }catch(e){
+      console.error('Firebase init failed', e);
+      syncBanner.textContent = 'Live sync failed to connect — running solo';
+      syncBanner.className = 'sync-banner offline';
+    }
+  }
+
+  function pushState(){
+    if(!firebaseReady || !dbRef) return;
+    dbRef.set({
+      name: playerName || 'Anonymous',
+      stamped: stamped,
+      updatedAt: firebase.database.ServerValue.TIMESTAMP
+    });
+  }
+
+  function listenBoard(db){
+    db.ref('rooms/' + ROOM_ID + '/players').on('value', (snap)=>{
+      const data = snap.val() || {};
+      renderBoard(data);
+    });
+  }
+
+  function timeAgo(ts){
+    if(!ts) return '';
+    const diff = Math.max(0, Date.now() - ts);
+    const mins = Math.floor(diff/60000);
+    if(mins < 1) return 'just now';
+    if(mins < 60) return mins + 'm ago';
+    const hrs = Math.floor(mins/60);
+    return hrs + 'h ago';
+  }
+
+  function countLines(stampedArr){
+    let n = 0;
+    LINES.forEach(line=>{ if(line.every(idx=>stampedArr[idx])) n++; });
+    return n;
+  }
+
+  function renderBoard(data){
+    const players = Object.values(data).map(p=>({
+      name: p.name || 'Anonymous',
+      stamped: p.stamped || [],
+      updatedAt: p.updatedAt || 0,
+      lines: countLines(p.stamped || []),
+      filled: (p.stamped || []).filter(Boolean).length
+    }));
+    players.sort((a,b)=> b.lines - a.lines || b.filled - a.filled);
+
+    if(players.length === 0){
+      boardList.innerHTML = '<div class="board-empty">No one has joined yet — be the first!</div>';
+      return;
+    }
+
+    boardList.innerHTML = players.map((p,i)=>{
+      const pct = Math.round((p.filled/25)*100);
+      return `
+        <div class="board-row">
+          <div class="board-rank">#${i+1}</div>
+          <div>
+            <div class="board-name">${escapeHtml(p.name)}</div>
+            <span class="board-updated">Updated ${timeAgo(p.updatedAt)}</span>
+          </div>
+          <div class="board-progress"><div class="board-progress-fill" style="width:${pct}%"></div></div>
+          <div class="board-lines ${p.lines>0 ? 'win' : ''}">${p.lines>0 ? '🎉 ' : ''}${p.lines} ${p.lines===1?'line':'lines'}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  let lastLineCount = 0;
+  function render(){
+    grid.innerHTML = '';
+    cardText.forEach((text, i)=>{
+      const sq = document.createElement('div');
+      sq.className = 'sq' + (i===12 ? ' free' : '') + (stamped[i] ? ' stamped' : '');
+      sq.innerHTML = `
+        <span>${text}</span>
+        <div class="stamp"><div class="stamp-ring"><b>Got it</b></div></div>
+      `;
+      if(i!==12){
+        sq.addEventListener('click', ()=>{
+          stamped[i] = !stamped[i];
+          localStorage.setItem('bingoStamped', JSON.stringify(stamped));
+          pushState();
+          render();
+        });
+      }
+      grid.appendChild(sq);
+    });
+    updateLines();
+  }
+
+  function updateLines(){
+    const completed = countLines(stamped);
+    linesCountEl.textContent = completed + (completed===1 ? ' line' : ' lines');
+    if(completed > lastLineCount){
+      celebrate();
+      statusText.textContent = "Nice! Line completed — keep going or call Bingo.";
+    } else if(completed === 0){
+      statusText.textContent = "Tap a square once you've found your match";
+    }
+    lastLineCount = completed;
+    winBanner.classList.toggle('show', completed >= 1);
+  }
+
+  function celebrate(){
+    const colors = ['#B9902C','#AE3A2C','#2C5C58','#D9B65C'];
+    for(let i=0;i<40;i++){
+      const p = document.createElement('div');
+      p.className = 'confetti-piece';
+      p.style.left = Math.random()*100 + 'vw';
+      p.style.background = colors[Math.floor(Math.random()*colors.length)];
+      p.style.animationDuration = (2 + Math.random()*1.5) + 's';
+      p.style.transform = `rotate(${Math.random()*360}deg)`;
+      document.body.appendChild(p);
+      setTimeout(()=>p.remove(), 3600);
+    }
+  }
+
+  if(playerName){
+    nameModal.style.display = 'none';
+  } else {
+    nameModal.style.display = 'flex';
+  }
+  modalJoinBtn.addEventListener('click', joinWithName);
+  modalNameInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') joinWithName(); });
+  function joinWithName(){
+    const v = modalNameInput.value.trim();
+    if(!v) return;
+    playerName = v;
+    localStorage.setItem('bingoName', playerName);
+    nameInput.value = playerName;
+    nameModal.style.display = 'none';
+    pushState();
+  }
+
+  nameInput.addEventListener('input', ()=>{
+    playerName = nameInput.value;
+    localStorage.setItem('bingoName', playerName);
+    pushState();
+  });
+
+  document.getElementById('newCardBtn').addEventListener('click', ()=>{
+    if(!confirm('Start a fresh card? This clears your current progress.')) return;
+    const picked = shuffle(ITEMS).slice(0,24);
+    picked.splice(12, 0, "FREE — Already know each other");
+    cardText = picked;
+    stamped = picked.map((_,i)=> i===12);
+    code = makeCode();
+    localStorage.setItem('bingoCard', JSON.stringify(cardText));
+    localStorage.setItem('bingoStamped', JSON.stringify(stamped));
+    localStorage.setItem('bingoCode', code);
+    passCode.textContent = 'NO. ' + code;
+    lastLineCount = 0;
+    render();
+    pushState();
+  });
+
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab + 'View').classList.add('active');
+    });
+  });
+
+  document.getElementById('copyLinkBtn').addEventListener('click', ()=>{
+    const url = window.location.origin + window.location.pathname + '?room=' + ROOM_ID;
+    navigator.clipboard.writeText(url).then(()=>{
+      const btn = document.getElementById('copyLinkBtn');
+      const old = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(()=>btn.textContent = old, 1500);
+    });
+  });
+
+  render();
+  initFirebase();
+
+})();
+</script>
+
+</body>
+</html>
