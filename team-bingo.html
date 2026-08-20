@@ -506,6 +506,126 @@
   }
   .modal .btn:hover{background:#254c48;}
 
+  /* --- Team response heatmap --- */
+  .response-grid{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:5px;
+    padding-bottom:4px;
+  }
+  .response-sq{
+    position:relative;
+    border-radius:8px;
+    padding:7px 5px 9px;
+    min-height:62px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    gap:5px;
+  }
+  .response-sq span{
+    font-size:8.5px;
+    line-height:1.3;
+    font-weight:500;
+  }
+  .resp-count{
+    font-family:'Space Mono',monospace;
+    font-size:9px;
+    font-weight:700;
+    border-radius:20px;
+    padding:2px 5px;
+    white-space:nowrap;
+  }
+  .heat-1{ background:rgba(44,92,88,0.12); border:1px solid rgba(44,92,88,0.25); }
+  .heat-1 span{ color:rgba(241,234,214,0.65); }
+  .heat-1 .resp-count{ background:rgba(44,92,88,0.2); border:1px solid rgba(44,92,88,0.4); color:#8FD4CC; }
+  .heat-2{ background:rgba(44,92,88,0.28); border:1px solid rgba(44,92,88,0.5); }
+  .heat-2 span{ color:rgba(241,234,214,0.85); }
+  .heat-2 .resp-count{ background:rgba(44,92,88,0.35); border:1px solid rgba(44,92,88,0.65); color:#8FD4CC; }
+  .heat-3{ background:rgba(185,144,44,0.18); border:1px solid rgba(185,144,44,0.4); }
+  .heat-3 span{ color:rgba(241,234,214,0.9); }
+  .heat-3 .resp-count{ background:rgba(185,144,44,0.25); border:1px solid rgba(185,144,44,0.5); color:var(--brass-light); }
+  .heat-4{ background:rgba(185,144,44,0.35); border:1px solid rgba(185,144,44,0.6); }
+  .heat-4 span{ color:var(--parchment-2); font-weight:600; }
+  .heat-4 .resp-count{ background:rgba(185,144,44,0.45); border:1px solid var(--brass); color:var(--parchment-2); }
+  .heat-5{ background:rgba(217,182,92,0.5); border:2px solid var(--brass); }
+  .heat-5 span{ color:var(--text-dark); font-weight:700; }
+  .heat-5 .resp-count{ background:var(--brass); border:none; color:#fff; }
+
+  /* --- Per-player mini cards --- */
+  .player-cards-wrap{ display:flex; flex-direction:column; gap:10px; }
+  .player-mini-card{
+    background:var(--ink-2);
+    border:1px solid rgba(217,182,92,0.2);
+    border-radius:13px;
+    padding:13px 13px 15px;
+  }
+  .player-mini-header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:9px;
+    gap:8px;
+  }
+  .player-mini-name{
+    font-family:'Fraunces',serif;
+    font-size:14px;
+    font-weight:600;
+    color:var(--parchment-2);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .player-mini-meta{
+    font-family:'Space Mono',monospace;
+    font-size:9.5px;
+    color:rgba(241,234,214,0.4);
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+  .mini-grid{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:3px;
+  }
+  .mini-sq{
+    aspect-ratio:1/1;
+    border-radius:5px;
+    background:rgba(241,234,214,0.05);
+    border:1px solid rgba(107,98,82,0.12);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:3px;
+    position:relative;
+    overflow:hidden;
+  }
+  .mini-sq span{ font-size:6.5px; line-height:1.2; color:rgba(241,234,214,0.3); font-weight:500; }
+  .mini-sq.mini-free{ background:rgba(217,182,92,0.08); border-color:rgba(217,182,92,0.2); }
+  .mini-sq.mini-free span{ font-family:'Fraunces',serif; color:rgba(217,182,92,0.55); }
+  .mini-sq.mini-stamped{ background:rgba(44,92,88,0.35); border-color:rgba(44,92,88,0.6); }
+  .mini-sq.mini-stamped span{ color:rgba(241,234,214,0.9); }
+  .mini-sq.mini-stamped::after{
+    content:"✓";
+    position:absolute;
+    top:1px; right:2px;
+    font-size:6px; color:rgba(143,212,204,0.8); font-weight:700; line-height:1;
+  }
+  .mini-sq.mini-free.mini-stamped::after{ display:none; }
+
+  /* Section labels */
+  .board-section-label{
+    font-family:'Space Mono',monospace;
+    font-size:10px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:rgba(241,234,214,0.35);
+    margin:18px 0 8px 2px;
+  }
+
   @media (max-width:420px){
     .sq span{font-size:9.5px;}
     .pass-grid{grid-template-columns:1fr;}
@@ -568,6 +688,22 @@
   </div>
 
   <div id="boardView" class="view">
+
+    <!-- Team response heatmap -->
+    <div class="board-card">
+      <div class="card-header" style="margin-bottom:8px;">
+        <div class="card-title" style="color:var(--parchment-2);">✦ Team Responses ✦</div>
+        <div id="heatmapMeta" style="font-family:'Space Mono',monospace;font-size:10px;color:rgba(143,212,204,0.8);"></div>
+      </div>
+      <div id="heatmapGrid" class="response-grid"></div>
+    </div>
+
+    <!-- Per-player mini cards -->
+    <div class="board-section-label">Teammates' Cards</div>
+    <div id="playerCardsWrap" class="player-cards-wrap"></div>
+
+    <!-- Scoreboard -->
+    <div class="board-section-label">Scoreboard</div>
     <div class="board-card">
       <div class="card-header" style="margin-bottom:8px;">
         <div class="card-title" style="color:var(--parchment-2);">✦ Live Board ✦</div>
@@ -575,6 +711,7 @@
       </div>
       <div id="boardList"></div>
     </div>
+
   </div>
 
 </div>
@@ -714,6 +851,7 @@
     dbRef.set({
       name: playerName || 'Anonymous',
       stamped: stamped,
+      cardText: cardText,
       updatedAt: firebase.database.ServerValue.TIMESTAMP
     });
   }
@@ -745,17 +883,75 @@
     const players = Object.values(data).map(p=>({
       name: p.name || 'Anonymous',
       stamped: p.stamped || [],
+      cardText: p.cardText || [],
       updatedAt: p.updatedAt || 0,
       lines: countLines(p.stamped || []),
       filled: (p.stamped || []).filter(Boolean).length
     }));
     players.sort((a,b)=> b.lines - a.lines || b.filled - a.filled);
 
-    if(players.length === 0){
+    const totalPlayers = players.length;
+    const heatmapGrid = document.getElementById('heatmapGrid');
+    const heatmapMeta = document.getElementById('heatmapMeta');
+    const playerCardsWrap = document.getElementById('playerCardsWrap');
+
+    // --- Team response heatmap ---
+    const itemStamps = {};
+    players.forEach(p=>{
+      p.cardText.forEach((text, i)=>{
+        if(i === 12) return; // skip FREE
+        if(p.stamped[i]) itemStamps[text] = (itemStamps[text] || 0) + 1;
+      });
+    });
+    const sortedItems = Object.entries(itemStamps).sort((a,b)=>b[1]-a[1]);
+
+    if(totalPlayers === 0 || sortedItems.length === 0){
+      heatmapGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:24px 10px;color:rgba(241,234,214,0.35);font-size:13px;">No squares stamped yet — be the first!</div>';
+      heatmapMeta.textContent = '';
+    } else {
+      const top25 = sortedItems.slice(0, 25);
+      heatmapMeta.textContent = top25.length + ' confirmed';
+      heatmapGrid.innerHTML = top25.map(([text, count])=>{
+        const ratio = totalPlayers > 0 ? count / totalPlayers : 0;
+        let heatClass = 'heat-1';
+        if(ratio >= 0.9)      heatClass = 'heat-5';
+        else if(ratio >= 0.6) heatClass = 'heat-4';
+        else if(ratio >= 0.4) heatClass = 'heat-3';
+        else if(ratio >= 0.2) heatClass = 'heat-2';
+        return `<div class="response-sq ${heatClass}">
+          <span>${escapeHtml(text)}</span>
+          <div class="resp-count">${count}/${totalPlayers}</div>
+        </div>`;
+      }).join('');
+    }
+
+    // --- Per-player mini grids ---
+    if(totalPlayers === 0){
+      playerCardsWrap.innerHTML = '<div class="board-empty" style="background:var(--ink-2);border:1px solid rgba(217,182,92,0.2);border-radius:13px;">No one has joined yet — be the first!</div>';
+    } else {
+      playerCardsWrap.innerHTML = players.map(p=>{
+        const texts = p.cardText.length === 25 ? p.cardText : Array(25).fill('');
+        const cells = texts.map((text, i)=>{
+          const isFree = i === 12;
+          const isStamped = p.stamped[i];
+          let cls = 'mini-sq' + (isFree ? ' mini-free' : '') + (isStamped ? ' mini-stamped' : '');
+          return `<div class="${cls}"><span>${isFree ? 'FREE' : escapeHtml(text)}</span></div>`;
+        }).join('');
+        return `<div class="player-mini-card">
+          <div class="player-mini-header">
+            <div class="player-mini-name">${escapeHtml(p.name)}</div>
+            <div class="player-mini-meta">${p.filled} stamped · ${p.lines} ${p.lines===1?'line':'lines'} · ${timeAgo(p.updatedAt)}</div>
+          </div>
+          <div class="mini-grid">${cells}</div>
+        </div>`;
+      }).join('');
+    }
+
+    // --- Scoreboard ---
+    if(totalPlayers === 0){
       boardList.innerHTML = '<div class="board-empty">No one has joined yet — be the first!</div>';
       return;
     }
-
     boardList.innerHTML = players.map((p,i)=>{
       const pct = Math.round((p.filled/25)*100);
       return `
